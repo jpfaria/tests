@@ -26,6 +26,7 @@ type Loren struct {
 // @A Param header bar string true tiam sed efficitur purus
 // @A Body github.com/americanas-go/inject/examples/simple.Request
 // @A Response 201 github.com/americanas-go/inject/examples/simple.Response tiam sed efficitur purus, at lacinia magna
+// @A provider index=0 name=xpto
 //
 // ctx lorem inpsum
 func LorenMethod(ctx context.Context, req *http.Request) (resp *Loren, err error) {
