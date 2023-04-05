@@ -1,0 +1,5 @@
+ignite:
+  log:
+    type: ZEROLOG
+  zerolog:
+    level: TRACE
