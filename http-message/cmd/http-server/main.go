@@ -12,17 +12,19 @@ import (
 	e "github.com/labstack/echo/v4"
 	"github.com/nats-io/nats.go"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 )
 
 type Handler struct {
-	conn    *nats.Conn
-	subject string
+	conn     *nats.Conn
+	subject  string
+	instance string
 }
 
-func NewHandler(conn *nats.Conn, subject string) *Handler {
-	return &Handler{conn: conn, subject: subject}
+func NewHandler(conn *nats.Conn, instance string, subject string) *Handler {
+	return &Handler{conn: conn, instance: instance, subject: subject}
 }
 
 func (h *Handler) Get(c e.Context) (err error) {
@@ -31,7 +33,7 @@ func (h *Handler) Get(c e.Context) (err error) {
 
 	log.Infof("received HTTP request with ID [%s]", id.String())
 
-	respSubject := strings.Join([]string{h.subject, id.String()}, "-")
+	respSubject := strings.Join([]string{h.instance, h.subject, id.String()}, "-")
 
 	ch := make(chan *nats.Msg)
 	subs, err := h.conn.ChanQueueSubscribe(respSubject, "http-server", ch)
@@ -44,6 +46,7 @@ func (h *Handler) Get(c e.Context) (err error) {
 
 	headers := nats.Header{}
 	headers.Set(settings.UUIDHeader, id.String())
+	headers.Set(settings.InstanceHeader, h.instance)
 
 	msg := &nats.Msg{
 		Header:  headers,
@@ -63,11 +66,12 @@ func (h *Handler) Get(c e.Context) (err error) {
 	case msg := <-ch:
 		log.Infof("returned on subject %s in %v", msg.Subject, time.Since(t).Milliseconds())
 		close(ch)
+		return c.JSON(http.StatusOK, respSubject)
 	case <-time.After(20 * time.Millisecond):
 		log.Infof("timeout on subject %s in %v", msg.Subject, time.Since(t).Milliseconds())
+		return c.JSON(http.StatusRequestTimeout, respSubject)
 	}
 
-	return c.JSON(http.StatusOK, respSubject)
 }
 
 func main() {
@@ -81,7 +85,9 @@ func main() {
 	}
 	defer conn.Close()
 
-	handler := NewHandler(conn, settings.Subject)
+	instance := os.Getenv("INSTANCE")
+
+	handler := NewHandler(conn, instance, settings.Subject)
 
 	ctx := context.Background()
 

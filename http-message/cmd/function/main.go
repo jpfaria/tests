@@ -30,24 +30,30 @@ func main() {
 
 	for msg := range ch {
 
-		id := msg.Header.Get(settings.UUIDHeader)
+		msg := msg
 
-		log.Infof("received from subject [%s], ID [%s]", subject, id)
+		go func() {
+			id := msg.Header.Get(settings.UUIDHeader)
+			instance := msg.Header.Get(settings.InstanceHeader)
 
-		respSubject := strings.Join([]string{subject, id}, "-")
+			log.Infof("received from subject [%s], ID [%s], Instance [%s]", subject, id, instance)
 
-		msgResp := &nats.Msg{
-			Subject: respSubject,
-			// Data:    b,
-		}
+			respSubject := strings.Join([]string{instance, subject, id}, "-")
 
-		// time.Sleep(10 * time.Millisecond)
+			msgResp := &nats.Msg{
+				Subject: respSubject,
+				// Data:    b,
+			}
 
-		if err := conn.PublishMsg(msgResp); err != nil {
-			log.Fatal(err)
-		}
+			// time.Sleep(10 * time.Millisecond)
 
-		log.Infof("published group message on subject [%s]", respSubject)
+			if err := conn.PublishMsg(msgResp); err != nil {
+				log.Fatal(err)
+			}
+
+			log.Infof("published group message on subject [%s]", respSubject)
+		}()
+
 	}
 
 }
